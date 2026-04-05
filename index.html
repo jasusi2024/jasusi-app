@@ -1267,20 +1267,27 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('profileName').textContent = user.displayName || 'Analyst';
     document.getElementById('profileEmail').textContent = user.email;
 
-    // Load user doc for is_admin check
+    // Load user doc for is_admin check - query by email OR uid
     try {
+      // First try by uid
       const uDoc = await getDoc(doc(db, 'users', user.uid));
       if (uDoc.exists()) {
         currentUserData = uDoc.data();
-        if (currentUserData.is_admin) {
-          document.getElementById('adminSection').style.display = 'block';
-          document.getElementById('fabBtn').classList.remove('hidden');
-        }
-        if (currentUserData.suscription?.is_active) {
-          document.getElementById('subBadge').textContent = '⭐ Pro Member';
-        }
+      } else {
+        // Fallback: query by email
+        const q = query(collection(db, 'users'), where('email', '==', user.email));
+        const snap = await getDocs(q);
+        if (!snap.empty) currentUserData = snap.docs[0].data();
       }
-    } catch(e) {}
+      if (currentUserData?.is_admin === true) {
+        document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('fabBtn').classList.remove('hidden');
+        document.getElementById('fabBtn').style.display = 'flex';
+      }
+      if (currentUserData?.suscription?.is_active) {
+        document.getElementById('subBadge').textContent = '⭐ Pro Member';
+      }
+    } catch(e) { console.log('User doc error:', e); }
 
     loadArticles();
     loadVideos();
